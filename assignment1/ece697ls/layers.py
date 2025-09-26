@@ -65,7 +65,9 @@ def affine_backward(dout, cache):
     N = x.shape[0]
     X_row = x.reshape(N, -1)
     db = np.sum(dout, axis=0) # Sum over batch dimension
-    dw = X_row.T.dot(dout) # x*dout transpose
+    dw = X_row.T.dot(dout)
+    dx = dout.dot(w.T)  
+    dx = dx.reshape(x.shape) # x*dout transpose
 
 
     pass
@@ -121,6 +123,8 @@ def relu_backward(dout, cache):
     # TODO: Implement the ReLU backward pass.                                 #
     ###########################################################################
     # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
+    dx = dout
+    dx[x<=0] = 0
 
     pass
 
