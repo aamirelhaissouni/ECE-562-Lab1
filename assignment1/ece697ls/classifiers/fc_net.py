@@ -55,6 +55,17 @@ class TwoLayerNet(object):
         ############################################################################
         # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
+        ##initialize weights and biases
+        W1 = np.random.normal(0, weight_scale, (input_dim, hidden_dim))
+        b1 = np.zeros(hidden_dim)
+        W2 = np.random.normal(0, weight_scale, (hidden_dim, num_classes))
+        b2 = np.zeros(num_classes) 
+
+        self.params['W1'] = W1
+        self.params['b1'] = b1
+        self.params['W2'] = W2
+        self.params['b2'] = b2
+
         pass
 
         # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
@@ -88,6 +99,17 @@ class TwoLayerNet(object):
         ############################################################################
         # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
+        ## get parameters
+        W1, b1 = self.params['W1'], self.params['b1']
+        W2, b2 = self.params['W2'], self.params['b2']
+
+        ## first layer affine - relu
+        hidden, cache1 = affine_relu_forward(X, W1, b1)
+
+        ## second layer affine
+        scores, cache2 = affine_forward(hidden, W2, b2)
+
+
         pass
 
         # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
@@ -111,6 +133,27 @@ class TwoLayerNet(object):
         # of 0.5 to simplify the expression for the gradient.                      #
         ############################################################################
         # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
+        ## compute loss and gradient
+        loss, dscores = softmax_loss(scores, y)
+
+        ## add regularization to loss
+        loss += 0.5 * self.reg * (np.sum(W1 * W1) + np.sum(W2 * W2))
+
+        ## backward pass throughs second layer
+        dhidden, dW2, db2 = affine_backward(dscores, cache2)
+
+        ##backwards pass through first layer
+        dX, dW1, db1 = affine_relu_backward(dhidden, cache1)
+
+        ## add regularization to gradients
+        dW1 += self.reg * W1
+        dW2 += self.reg * W2
+
+        #store gradients
+        grads['W1'] = dW1
+        grads['b1'] = db1
+        grads['W2'] = dW2
+        grads['b2'] = db2
 
         pass
 
