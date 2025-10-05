@@ -69,6 +69,13 @@ def sgd_momentum(w, dw, config=None):
     ###########################################################################
     # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
+    ##TODO: I think i need to use formula from slides 04 intro to NN
+
+    #update the weights with old velocity
+    next_w = w - v
+    #update velocity
+    v = config["momentum"] * v - config["learning_rate"] * dw
+
     pass
 
     # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
@@ -106,6 +113,12 @@ def rmsprop(w, dw, config=None):
     # config['cache'].                                                        #
     ###########################################################################
     # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
+    decay = config["decay_rate"]
+    epsilon = config["epsilon"]
+    config["cache"] = decay * config["cache"] + (1.0 - decay) * (dw ** 2)
+
+    ##param updates
+    next_w = w - config['learning_rate'] * dw / (np.sqrt(config["cache"]) + epsilon)
 
     pass
 
@@ -151,6 +164,23 @@ def adam(w, dw, config=None):
     # using it in any calculations.                                           #
     ###########################################################################
     # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
+
+    ##increment
+    config['t'] += 1
+    t = config['t']
+
+    beta1 = config["beta1"]
+    beta2 = config["beta2"] 
+    epsilon = config["epsilon"]
+
+    config['m'] = beta1 * config['m'] + (1 - beta1) * dw
+    config['v'] = beta2 * config['v'] + (1 - beta2) * (dw ** 2)
+
+    m_hat = config['m'] / (1 - (beta1 ** t))
+    v_hat = config['v'] / (1 - (beta2 ** t))
+
+    ##parameter update
+    next_w = w - config['learning_rate'] * m_hat / (np.sqrt(v_hat) + epsilon)
 
     pass
 
