@@ -63,6 +63,27 @@ class ThreeLayerConvNet(object):
         ############################################################################
         # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
+        C, H, W = input_dim
+
+
+        ##initialize the weights
+        ##self.params of W1 filters, with shape of num_filters, # of input channels, filter height, filter width)
+        self.params['W1'] = weight_scale * np.random.randn(num_filters, C, filter_size, filter_size)
+        self.params['b1'] = np.zeros(num_filters)
+
+        ##change shape based on 2*2 maxpool and stride of 2
+        pool_out_H = H // 2
+        pool_out_W = W // 2
+        pool_out_size = pool_out_H * pool_out_W * num_filters ##flattenen the jawn
+
+        ##fully connected layer 1
+        self.params['W2'] = weight_scale * np.random.randn(pool_out_size, hidden_dim)
+        self.params['b2'] = np.zeros(hidden_dim)
+
+        ##output layer
+        self.params['W3'] = weight_scale * np.random.randn(hidden_dim, num_classes)
+        self.params['b3'] = np.zeros(num_classes)
+
         pass
 
         # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
@@ -102,6 +123,17 @@ class ThreeLayerConvNet(object):
         ############################################################################
         # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
+        ##forward pass conv - relu - 2x2 max pool - affine - relu - affine - softmax
+
+        ##conv - relu - 2x2 max pool
+        out1, cache1 = conv_relu_pool_forward(X, W1, b1, conv_param, pool_param)
+
+        ##affine - relu
+        out2, cache2 = affine_relu_forward(out1, W2, b2)
+
+        ##affine - softmax
+        scores, cache3 = affine_forward(out2, W3, b3)
+
         pass
 
         # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
@@ -124,6 +156,31 @@ class ThreeLayerConvNet(object):
         # of 0.5 to simplify the expression for the gradient.                      #
         ############################################################################
         # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
+
+        ##backwards pass
+
+        ##softmax
+        loss, dscores = softmax_loss(scores, y)
+
+        ##l2 regularization
+        loss += 0.5 * self.reg * (np.sum(W1*W1) + np.sum(W2*W2) + np.sum(W3*W3))
+
+        ##backwards pass
+
+        ##affine backwards
+        dout2, dW3, db3 = affine_backward(dscores, cache3)
+        grads['W3'] = self.reg * W3 + dW3
+        grads['b3'] = db3
+
+        ##relu - affine backwards
+        dout1, dW2, db2 = affine_relu_backward(dout2, cache2)
+        grads['W2'] = self.reg * W2 + dW2
+        grads['b2'] = db2
+
+        ##conv - relu - 2x2 max pool backwards
+        dX, dW1, db1 = conv_relu_pool_backward(dout1, cache1)
+        grads['W1'] = self.reg * W1 + dW1
+        grads['b1'] = db1
 
         pass
 

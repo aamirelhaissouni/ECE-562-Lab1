@@ -520,6 +520,8 @@ def dropout_forward(x, dropout_param):
         # Store the dropout mask in the mask variable.                        #
         #######################################################################
         # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
+        mask = (np.random.rand(*x.shape) < p) / p
+        out = x * mask
 
         pass
 
@@ -532,6 +534,7 @@ def dropout_forward(x, dropout_param):
         # TODO: Implement the test phase forward pass for inverted dropout.   #
         #######################################################################
         # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
+        out = x
 
         pass
 
@@ -563,6 +566,7 @@ def dropout_backward(dout, cache):
         # TODO: Implement training phase backward pass for inverted dropout   #
         #######################################################################
         # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
+        dx = dout * mask
 
         pass
 
@@ -610,6 +614,32 @@ def conv_forward_naive(x, w, b, conv_param):
     ###########################################################################
     # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
+    ##add padding
+    N, C, H, W = x.shape
+    F, _, HH, WW = w.shape
+
+    stride = conv_param['stride']
+    pad = conv_param['pad']
+
+    x_padded = np.pad(x, ((0,0), (0,0), (pad,pad), (pad,pad)), mode='constant')
+
+    H_out = 1 + (H + 2 * pad - HH) // stride
+    W_out = 1 + (W + 2 * pad - WW) // stride
+    out = np.zeros((N, F, H_out, W_out))
+
+    ##slide filters over input image
+    for n in range(N): ## for every image in the batch
+        for f in range(F):  ## slide over filter
+            for i in range(H_out): ## slide over hieght
+                for j in range(W_out): ##s slide over width
+                    h_start = i * stride
+                    h_end = h_start + HH
+                    w_start = j * stride
+                    w_end = w_start + WW
+
+                    # Perform the convolution operation (element-wise multiplication and sum)
+                    out[n, f, i, j] = np.sum(x_padded[n, :, h_start:h_end, w_start:w_end] * w[f]) + b[f]
+
     pass
 
     # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
@@ -638,6 +668,31 @@ def conv_backward_naive(dout, cache):
     # TODO: Implement the convolutional backward pass.                        #
     ###########################################################################
     # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
+
+    N = dout.shape[0]
+    x, w, b, conv_param = cache
+    stride = conv_param['stride']
+    pad = conv_param['pad']
+    F, C, HH, WW = w.shape
+    _, _, H_out, W_out = dout.shape
+
+    x_padded = np.pad(x, ((0,0), (0,0), (pad,pad), (pad,pad)), mode='constant')
+    dx_padded = np.zeros_like(x_padded)
+    dx = np.zeros_like(x)
+
+    db = np.sum(dout, axis=(0, 2, 3))
+
+    dw = np.zeros_like(w) 
+    for n in range(N):
+        for f in range(F):
+            for i in range(H_out):
+                for j in range(W_out):
+                    h_start = i * stride
+                    h_end = h_start + HH
+                    w_start = j * stride
+                    w_end = w_start + WW
+
+                    dw[f] += x_padded[n, :, h_start:h_end, w_start:w_end] * dout[n, f, i, j]
 
     pass
 
@@ -673,6 +728,26 @@ def max_pool_forward_naive(x, pool_param):
     ###########################################################################
     # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
+    N, C, H, W = x.shape
+    pool_height = pool_param['pool_height']
+    pool_width = pool_param['pool_width']
+    stride = pool_param['stride']
+
+    H_prime = 1 + (H - pool_height) // stride
+    W_prime = 1 + (W - pool_width) // stride
+    out = np.zeros((N, C, H_prime, W_prime))
+
+    ## iterate over but this time take the max 
+    for i in range(N):
+        for i_c in range(C):
+            for i_h in range(H_prime):
+                h_start = i_h * stride
+                h_end = h_start + pool_height
+                for j in range(W_prime):
+                    w_start = j * stride
+                    w_end = w_start + pool_width
+                    out[i, i_c, i_h, j] = np.max(x[i, i_c, h_start:h_end, w_start:w_end])
+
     pass
 
     # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
@@ -699,6 +774,33 @@ def max_pool_backward_naive(dout, cache):
     # TODO: Implement the max-pooling backward pass                           #
     ###########################################################################
     # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
+    x, pool_param = cache
+    N, C, H, W = x.shape
+    pool_height = pool_param['pool_height']
+    pool_width  = pool_param['pool_width']
+    stride      = pool_param['stride']
+
+    H_prime = 1 + (H - pool_height) // stride
+    W_prime = 1 + (W - pool_width)  // stride
+
+    dx = np.zeros_like(x)
+
+    # iterate over every output location, find the max in the corresponding window,
+    # and pass the upstream gradient there.
+    for n in range(N):
+        for c in range(C):
+            for i_h in range(H_prime):
+                h_start = i_h * stride
+                h_end   = h_start + pool_height
+                for j_w in range(W_prime):
+                    w_start = j_w * stride
+                    w_end   = w_start + pool_width
+
+                    window = x[n, c, h_start:h_end, w_start:w_end]
+                    # boolean mask of where the max value(s) are
+                    mask = (window == np.max(window))
+                    # add upstream gradient to those positions
+                    dx[n, c, h_start:h_end, w_start:w_end] += dout[n, c, i_h, j_w] * mask
 
     pass
 
@@ -741,6 +843,8 @@ def spatial_batchnorm_forward(x, gamma, beta, bn_param):
     # Your implementation should be very short; ours is less than five lines. #
     ###########################################################################
     # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
+
+    
 
     pass
 
