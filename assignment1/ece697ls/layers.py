@@ -844,7 +844,13 @@ def spatial_batchnorm_forward(x, gamma, beta, bn_param):
     ###########################################################################
     # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-    
+    N, C, H, W = x.shape
+
+    x_reshaped = x.transpose(0, 2, 3, 1).reshape(-1, C)  
+
+    out_reshaped, cache = batchnorm_forward(x_reshaped, gamma, beta, bn_param)
+
+    out = out_reshaped.reshape(N, H, W, C).transpose(0, 3, 1, 2)
 
     pass
 
@@ -879,6 +885,15 @@ def spatial_batchnorm_backward(dout, cache):
     # Your implementation should be very short; ours is less than five lines. #
     ###########################################################################
     # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
+
+    N, C, H, W = dout.shape
+
+    dout_reshaped = dout.transpose(0, 2, 3, 1).reshape(-1, C)
+
+    dx_reshaped, dgamma, dbeta = batchnorm_backward(dout_reshaped, cache)
+
+    dx = dx_reshaped.reshape(N, H, W, C).transpose(0, 3, 1, 2)
+
 
     pass
 
@@ -920,6 +935,22 @@ def spatial_groupnorm_forward(x, gamma, beta, G, gn_param):
     ###########################################################################
     # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
+    N, C, H, W = x.shape
+    x_group = x.reshape(N, G, C // G, H, W)
+
+    mean = np.mean(x_group, axis=(2, 3, 4), keepdims=True)
+    var = np.var(x_group, axis=(2, 3, 4), keepdims=True)
+
+    std = np.sqrt(var + eps)
+    x_groupnorm = (x_group - mean) / std  # normalized per-group
+
+    x_hat = x_groupnorm.reshape(N, C, H, W)
+
+    out = gamma[None, :, None, None] * x_hat + beta[None, :, None, None]
+
+    cache = (G, x, x_group, x_groupnorm, mean, var, eps, gamma, beta, std)
+    return out, cache
+
     pass
 
     # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
@@ -949,6 +980,31 @@ def spatial_groupnorm_backward(dout, cache):
     # This will be extremely similar to the layer norm implementation.        #
     ###########################################################################
     # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
+
+    G, x, x_group, x_groupnorm, mean, var, eps, gamma, beta, std = cache
+    N, C, H, W = x.shape
+
+    # compute gradients for gamma and beta
+    x_hat = x_groupnorm.reshape(N, C, H, W)
+    dbeta = np.sum(dout, axis=(0, 2, 3))
+    dgamma = np.sum(dout * x_hat, axis=(0, 2, 3))
+
+    dx_hat = dout * gamma[None, :, None, None]
+
+    dx_grouphat = dx_hat.reshape(N, G, C // G, H, W)
+
+    m = (C // G) * H * W  # number of elements per group
+    dxg = dx_grouphat.reshape(N * G, m)             # shape (N*G, m)
+    xgh = x_groupnorm.reshape(N * G, m)             # shape (N*G, m)
+
+    inv_std = 1.0 / std.reshape(N * G, 1)
+
+    dxg_mean = np.mean(dxg, axis=1, keepdims=True)                # (N*G, 1)
+    dxg_xgh_mean = np.mean(dxg * xgh, axis=1, keepdims=True)      # (N*G, 1)
+
+    dxg_out = inv_std * (dxg - dxg_mean - xgh * dxg_xgh_mean)     # (N*G, m)
+
+    dx = dxg_out.reshape(N, G, C // G, H, W).reshape(N, C, H, W)
 
     pass
 
